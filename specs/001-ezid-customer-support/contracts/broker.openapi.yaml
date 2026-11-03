@@ -1,0 +1,241 @@
+openapi: 3.0.3
+info:
+  title: ezCloud support broker
+  version: 0.1.0
+  description: |
+    Đổi token ezID thành presence token và connect grant.
+    Không nhận client_secret từ ứng dụng desktop.
+servers:
+  - url: https://support-broker.example
+paths:
+  /v1/sessions:
+    post:
+      summary: Đổi access token ezID lấy presence token
+      parameters:
+        - $ref: "#/components/parameters/EzidBearer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionStart"
+      responses:
+        "200":
+          description: Đăng nhập hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presence"
+        "401":
+          description: Token ezID không hợp lệ hoặc hết hạn
+  /v1/sessions/refresh:
+    post:
+      summary: Gia hạn presence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                  description: Access token ezID còn hạn. Không gửi refresh token lên broker.
+              required: [access_token]
+      responses:
+        "200":
+          description: Presence mới
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Presence"
+        "401":
+          description: Không gia hạn được
+  /v1/sessions/current:
+    delete:
+      summary: Thu hồi presence của máy hiện tại
+      parameters:
+        - $ref: "#/components/parameters/EzidBearer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_uuid:
+                  type: string
+              required: [device_uuid]
+      responses:
+        "204":
+          description: Đã thu hồi
+  /v1/tickets:
+    post:
+      summary: Khách tạo hoặc lấy lại yêu cầu đang mở
+      parameters:
+        - $ref: "#/components/parameters/PresenceBearer"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_id:
+                  type: string
+                device_uuid:
+                  type: string
+              required: [device_id, device_uuid]
+      responses:
+        "200":
+          description: Yêu cầu đang chờ hoặc đang hỗ trợ của máy này
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "403":
+          description: Presence không phải role customer hoặc lệch device
+    get:
+      summary: Nhân viên liệt kê yêu cầu đang chờ
+      parameters:
+        - $ref: "#/components/parameters/PresenceBearer"
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [waiting]
+          required: true
+      responses:
+        "200":
+          description: Hàng đợi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tickets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Ticket"
+        "403":
+          description: Không có role supporter
+  /v1/tickets/{ticket_id}/connect:
+    post:
+      summary: Cấp connect grant một lần, 60 giây
+      parameters:
+        - $ref: "#/components/parameters/PresenceBearer"
+        - $ref: "#/components/parameters/TicketId"
+      responses:
+        "200":
+          description: Grant và ticket chuyển sang active
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connect_grant:
+                    type: string
+                  expires_in:
+                    type: integer
+                    example: 60
+                required: [connect_grant, expires_in]
+        "403":
+          description: Không phải supporter
+        "409":
+          description: Ticket không còn waiting hoặc active
+  /v1/tickets/{ticket_id}/close:
+    post:
+      summary: Khách hoặc nhân viên của ticket đóng yêu cầu
+      parameters:
+        - $ref: "#/components/parameters/PresenceBearer"
+        - $ref: "#/components/parameters/TicketId"
+      responses:
+        "200":
+          description: Ticket closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "403":
+          description: Không phải khách tạo ticket và không phải supporter đã nhận
+  /.well-known/ezcloud-support-jwks:
+    get:
+      summary: Khóa công khai để hbbs và hbbr verify
+      responses:
+        "200":
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      type: object
+components:
+  parameters:
+    EzidBearer:
+      in: header
+      name: Authorization
+      required: true
+      schema:
+        type: string
+      description: Bearer access token do ezID cấp
+    PresenceBearer:
+      in: header
+      name: Authorization
+      required: true
+      schema:
+        type: string
+      description: Bearer presence token do broker ký
+    TicketId:
+      in: path
+      name: ticket_id
+      required: true
+      schema:
+        type: string
+  schemas:
+    SessionStart:
+      type: object
+      properties:
+        device_uuid:
+          type: string
+        device_id:
+          type: string
+      required: [device_uuid, device_id]
+    Presence:
+      type: object
+      properties:
+        presence_token:
+          type: string
+        expires_in:
+          type: integer
+          example: 600
+        role:
+          type: string
+          enum: [customer, supporter]
+        name:
+          type: string
+      required: [presence_token, expires_in, role, name]
+    Ticket:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+        sub:
+          type: string
+        name:
+          type: string
+        device_id:
+          type: string
+        status:
+          type: string
+          enum: [waiting, active, closed]
+        created_at:
+          type: string
+          format: date-time
+        supporter_sub:
+          type: string
+          nullable: true
+      required: [ticket_id, sub, name, device_id, status, created_at]

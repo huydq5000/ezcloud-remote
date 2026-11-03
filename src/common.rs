@@ -1252,9 +1252,44 @@ pub fn get_custom_rendezvous_server(custom: String) -> String {
     "".to_owned()
 }
 
+const EZCLOUD_ID_SERVER: &str = "remote.ezcloud.vn";
+const EZCLOUD_SERVER_KEY: &str = "k46cdDTEQtwOyM3F9pk1FBl+rmS2ewBTCgsN1bM0HJY=";
+
+/// Server and key for every ezCloud Remote build. Override wins over a saved
+/// public-network setting, and an empty api-server stops calls to port 21114.
+pub fn apply_ezcloud_builtin_config() {
+    *config::APP_NAME.write().unwrap() = "ezCloud Remote".to_owned();
+    {
+        let mut overwrite = config::OVERWRITE_SETTINGS.write().unwrap();
+        overwrite.insert(
+            "custom-rendezvous-server".to_owned(),
+            EZCLOUD_ID_SERVER.to_owned(),
+        );
+        overwrite.insert("key".to_owned(), EZCLOUD_SERVER_KEY.to_owned());
+        overwrite.insert("api-server".to_owned(), String::new());
+    }
+    *config::PROD_RENDEZVOUS_SERVER.write().unwrap() = EZCLOUD_ID_SERVER.to_owned();
+    LocalConfig::set_option("ezcloud-auth-required".to_owned(), "Y".to_owned());
+    if let Ok(url) = std::env::var("EZCLOUD_SOURCE_URL") {
+        let url = url.trim();
+        if !url.is_empty() {
+            LocalConfig::set_option("ezcloud-source-url".to_owned(), url.to_owned());
+        }
+    }
+    crate::ezcloud::session::restore_in_background();
+}
+
 #[inline]
 pub fn get_api_server(api: String, custom: String) -> String {
     if Config::no_register_device() {
+        return "".to_owned();
+    }
+    if config::OVERWRITE_SETTINGS
+        .read()
+        .unwrap()
+        .get("api-server")
+        .is_some_and(|value| value.is_empty())
+    {
         return "".to_owned();
     }
     let mut res = get_api_server_(api, custom);
@@ -2493,6 +2528,7 @@ pub fn rustdesk_interval(i: Interval) -> ThrottledInterval {
 }
 
 pub fn load_custom_client() {
+    apply_ezcloud_builtin_config();
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
@@ -2591,6 +2627,7 @@ pub fn get_dst_align_rgba() -> usize {
 }
 
 pub fn read_custom_client(config: &str) {
+    apply_ezcloud_builtin_config();
     let Ok(data) = decode64(config) else {
         log::error!("Failed to decode custom client config");
         return;

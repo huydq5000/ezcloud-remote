@@ -822,6 +822,19 @@ impl Client {
         // the outer select_ok closes its pc instead of leaking it in SESSIONS. Disarmed via
         // into_inner() once the stream is adopted into a connection attempt.
         let mut webrtc_offerer = webrtc_offerer.map(OffererGuard::new);
+        let token = {
+            let grant =
+                hbb_common::config::LocalConfig::get_option_from_file("ezcloud-connect-grant");
+            if grant.is_empty() {
+                token
+            } else {
+                hbb_common::config::LocalConfig::set_option(
+                    "ezcloud-connect-grant".to_owned(),
+                    "".to_owned(),
+                );
+                grant
+            }
+        };
         let mut start = Instant::now();
         let mut socket = connect_tcp(&*rendezvous_server, CONNECT_TIMEOUT).await;
         debug_assert!(!servers.contains(&rendezvous_server));

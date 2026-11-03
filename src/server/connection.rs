@@ -413,6 +413,8 @@ pub struct Connection {
     server_audit_conn: String,
     server_audit_file: String,
     controlled_context: Option<ControlledContext>,
+    ez_agent_name: String,
+    ez_ticket_id: String,
     lr: LoginRequest,
     // Authentication retries may update credentials, but not the requested session scope.
     // A digest, so no peer-controlled strings are retained.
@@ -535,6 +537,8 @@ impl Connection {
         let super::ConnectionMeta {
             control_permissions,
             controlled_context,
+            ez_agent_name,
+            ez_ticket_id,
         } = meta;
         // Android is not supported yet, so we always set control_permissions to None.
         #[cfg(target_os = "android")]
@@ -621,6 +625,8 @@ impl Connection {
             server_audit_conn: "".to_owned(),
             server_audit_file: "".to_owned(),
             controlled_context,
+            ez_agent_name,
+            ez_ticket_id,
             lr: Default::default(),
             login_scope: None,
             peer_argb: 0u32,
@@ -2376,6 +2382,14 @@ impl Connection {
             && crate::get_builtin_option(keys::OPTION_ONE_WAY_FILE_TRANSFER) != "Y"
     }
 
+    fn ezcloud_click_only(&self) -> Option<bool> {
+        if hbb_common::config::LocalConfig::get_option_from_file("ezcloud-auth-required") != "Y" {
+            return None;
+        }
+        let open = hbb_common::config::LocalConfig::get_option_from_file("ezcloud-open-ticket");
+        Some(!open.is_empty() && self.ez_ticket_id == open)
+    }
+
     fn try_start_cm(&mut self, peer_id: String, name: String, authorized: bool) {
         self.send_to_cm(ipc::Data::Login {
             id: self.inner.id(),
@@ -3043,6 +3057,37 @@ impl Connection {
             let allow_logon_screen_password =
                 crate::get_builtin_option(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD) == "Y"
                     && is_logon();
+
+            if let Some(matched) = self.ezcloud_click_only() {
+                if !matched {
+                    log::info!(
+                        "ezCloud ticket rejected conn={} ticket_present={}",
+                        self.inner.id(),
+                        !self.ez_ticket_id.is_empty()
+                    );
+                    return false;
+                }
+                #[cfg(not(any(target_os = "android", target_os = "ios")))]
+                if should_use_terminal_os_login_scope(self.terminal, &lr.os_login.username) {
+                    if let Some(keep_alive) = self.prepare_terminal_login_for_authorization().await
+                    {
+                        return keep_alive;
+                    }
+                }
+                let shown = if self.ez_agent_name.is_empty() {
+                    lr.my_name.clone()
+                } else {
+                    self.ez_agent_name.clone()
+                };
+                self.try_start_cm(lr.my_id, shown, false);
+                if hbb_common::get_version_number(&lr.version)
+                    >= hbb_common::get_version_number("1.2.0")
+                {
+                    self.send_login_error(crate::client::LOGIN_MSG_NO_PASSWORD_ACCESS)
+                        .await;
+                }
+                return true;
+            }
 
             if (password::approve_mode() == ApproveMode::Click && !allow_logon_screen_password)
                 || password::approve_mode() == ApproveMode::Both && !password::has_valid_password()

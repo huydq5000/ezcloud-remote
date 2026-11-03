@@ -90,6 +90,8 @@ type ConnMap = HashMap<i32, ConnInner>;
 pub struct ConnectionMeta {
     pub control_permissions: Option<ControlPermissions>,
     pub controlled_context: Option<ControlledContext>,
+    pub ez_agent_name: String,
+    pub ez_ticket_id: String,
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]

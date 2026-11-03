@@ -52,6 +52,10 @@ class UserModel {
 
   void refreshCurrentUser() async {
     if (bind.isDisableAccount()) return;
+    if (bind.isCustomClient() ||
+        bind.mainGetLocalOption(key: 'ezcloud-auth-required') == 'Y') {
+      return;
+    }
     networkError.value = '';
     networkErrorFromServer.value = false;
     final token = bind.mainGetLocalOption(key: 'access_token');

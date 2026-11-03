@@ -1420,6 +1420,8 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
           final usePassword = model.approveMode != 'click';
 
           final isApproveModeFixed = isOptionFixed(kOptionApproveMode);
+          final ezcloud =
+              bind.mainGetLocalOption(key: 'ezcloud-auth-required') == 'Y';
           return _Card(title: 'Password', children: [
             ComboBox(
               enabled: !locked && !isApproveModeFixed,
@@ -1440,13 +1442,13 @@ class _SafetyState extends State<_Safety> with AutomaticKeepAliveClientMixin {
                   ),
                   enabled: tmpEnabled && !locked),
             if (usePassword) numericOneTimePassword,
-            if (usePassword) radios[1],
-            if (usePassword && !isChangePermanentPasswordDisabled())
+            if (usePassword && !ezcloud) radios[1],
+            if (usePassword && !ezcloud && !isChangePermanentPasswordDisabled())
               _SubButton('Set permanent password', setPasswordDialog,
                   permEnabled && !locked),
             // if (usePassword)
             //   hide_cm(!locked).marginOnly(left: _kContentHSubMargin - 6),
-            if (usePassword) radios[2],
+            if (usePassword && !ezcloud) radios[2],
           ]);
         })));
   }
@@ -2593,15 +2595,32 @@ class _AboutState extends State<_About> {
       final myId = data['myId'].toString();
       const linkStyle = TextStyle(decoration: TextDecoration.underline);
       final scrollController = ScrollController();
+      final appName = bind.mainGetAppNameSync();
+      final ezcloud = appName != 'RustDesk' ||
+          bind.mainGetLocalOption(key: 'ezcloud-auth-required') == 'Y';
+      final sourceUrl = bind.mainGetLocalOption(key: 'ezcloud-source-url');
       return SingleChildScrollView(
         controller: scrollController,
-        child: _Card(title: translate('About RustDesk'), children: [
+        child: _Card(
+            title: ezcloud ? appName : translate('About RustDesk'),
+            children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(
                 height: 8.0,
               ),
+              if (ezcloud)
+                SelectionArea(
+                    child: Text(
+                            'Bản đã sửa của RustDesk. Ngày $buildDate. Giấy phép gốc: AGPL-3.0.')
+                        .marginSymmetric(vertical: 4.0)),
+              if (ezcloud)
+                SelectionArea(
+                    child: Text(sourceUrl.isEmpty
+                            ? 'Mã nguồn: chưa cấu hình (ezcloud-source-url).'
+                            : 'Mã nguồn: $sourceUrl')
+                        .marginSymmetric(vertical: 4.0)),
               SelectionArea(
                   child: Text('${translate('Version')}: $version')
                       .marginSymmetric(vertical: 4.0)),

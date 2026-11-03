@@ -1,0 +1,14 @@
+[Unit]
+Description=ezCloud Remote client download site
+After=network.target
+
+[Service]
+Type=simple
+User=ezit
+Group=ezit
+ExecStart=/usr/bin/python3 /usr/local/bin/ezcloud-remote-download.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

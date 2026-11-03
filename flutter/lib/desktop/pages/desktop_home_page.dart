@@ -10,6 +10,9 @@ import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
+import 'package:flutter_hbb/desktop/pages/ezcloud_gate.dart';
+import 'package:flutter_hbb/desktop/pages/ezcloud_login_page.dart';
+import 'package:flutter_hbb/desktop/pages/ezcloud_queue_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
@@ -54,10 +57,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   final RxBool _block = false.obs;
 
   final GlobalKey _childKey = GlobalKey();
+  bool _ezcloudSignedIn = false;
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (ezcloudAuthRequired() && !ezcloudHasPresence()) {
+      return const EzcloudLoginPage();
+    }
     final isIncomingOnly = bind.isIncomingOnly();
     return _buildBlock(
         child: Row(
@@ -90,6 +97,16 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         child: loadLogo(),
       ),
       buildTip(context),
+      if (ezcloudAuthRequired() && ezcloudHasPresence())
+        Align(
+          alignment: Alignment.center,
+          child: TextButton(
+            onPressed: () {
+              bind.mainSetLocalOption(key: 'ezcloud-login', value: 'logout');
+            },
+            child: const Text('Đăng xuất ezID'),
+          ),
+        ),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
       FutureBuilder<Widget>(
@@ -179,6 +196,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   buildRightPane(BuildContext context) {
+    if (ezcloudAuthRequired() && ezcloudHasPresence()) {
+      final supporter =
+          bind.mainGetLocalOption(key: 'ezcloud-role') == 'supporter';
+      return Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: supporter ? const EzcloudQueuePage() : const EzcloudSupportPage(),
+      );
+    }
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ConnectionPage(),
@@ -699,7 +724,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   @override
   void initState() {
     super.initState();
+    _ezcloudSignedIn = ezcloudHasPresence();
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
+      final signedIn = ezcloudHasPresence();
+      if (signedIn != _ezcloudSignedIn) {
+        _ezcloudSignedIn = signedIn;
+        if (mounted) setState(() {});
+      }
       await gFFI.serverModel.fetchID();
       final error = await bind.mainGetError();
       if (systemError != error) {

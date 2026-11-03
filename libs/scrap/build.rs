@@ -74,6 +74,18 @@ fn link_vcpkg(mut path: PathBuf, name: &str) -> PathBuf {
     include
 }
 
+fn newest_homebrew_cellar(name: &str) -> Option<PathBuf> {
+    let path = PathBuf::from("/opt/homebrew/Cellar").join(name);
+    let entries = std::fs::read_dir(&path).ok()?;
+    let mut directories = entries
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
+        .collect::<Vec<_>>();
+    directories.sort_unstable();
+    directories.pop()
+}
+
 /// Link homebrew package(for Mac M1).
 fn link_homebrew_m1(name: &str) -> PathBuf {
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
@@ -248,6 +260,17 @@ fn main() {
     gen_vcpkg_package("libvpx", "vpx_ffi.h", "vpx_ffi.rs", "^[vV].*");
     gen_vcpkg_package("aom", "aom_ffi.h", "aom_ffi.rs", "^(aom|AOM|OBU|AV1).*");
     gen_vcpkg_package("libyuv", "yuv_ffi.h", "yuv_ffi.rs", ".*");
+    // Homebrew aom is built against libvmaf. The static archive does not
+    // record that dependency, so the final link needs it explicitly.
+    if target_os == "macos" {
+        if let Some(dir) = newest_homebrew_cellar("libvmaf") {
+            println!(
+                "cargo:rustc-link-search={}",
+                dir.join("lib").to_str().unwrap()
+            );
+            println!("cargo:rustc-link-lib=static=vmaf");
+        }
+    }
     // ffmpeg();
 
     if target_os == "ios" {

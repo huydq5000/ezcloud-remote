@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ezCloud Remote — Tải ứng dụng</title>
+  <style>
+    :root {
+      --ez-primary: #0B3C82;
+      --ez-primary-light: #1B5CC8;
+      --ez-accent: #FDCE4C;
+      --ez-white: #FFFFFF;
+      --ez-bg: #F4F7FC;
+      --ez-section: #EBF1FA;
+      --ez-line: #E4E9F0;
+      --ez-muted: #8A9BB5;
+      --ez-dark: #1A2B4A;
+      --ez-text: #2D3E5C;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--ez-bg);
+      color: var(--ez-text);
+      font-family: "Be Vietnam Pro", "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #0B3C82 0%, #1B5CC8 60%, #2A7FE8 100%);
+      color: #fff;
+      padding: 28px 24px 36px;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    .brand {
+      font-family: Montserrat, "Segoe UI", sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    h1 {
+      font-family: Montserrat, "Segoe UI", sans-serif;
+      font-weight: 700;
+      font-size: 36px;
+      line-height: 1.2;
+      margin: 8px 0 8px;
+      color: #fff;
+    }
+    header p { margin: 0; color: #E8F0FD; max-width: 36em; }
+    main { margin-top: -20px; padding: 0 24px 48px; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(11, 60, 130, 0.08);
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--ez-accent);
+      color: var(--ez-dark);
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 999px;
+      padding: 4px 10px;
+      margin-bottom: 12px;
+    }
+    h2 {
+      font-family: Montserrat, "Segoe UI", sans-serif;
+      font-weight: 600;
+      font-size: 22px;
+      color: var(--ez-dark);
+      margin: 0 0 8px;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    a.btn {
+      display: inline-block;
+      background: var(--ez-primary);
+      color: #fff;
+      text-decoration: none;
+      font-family: Montserrat, "Segoe UI", sans-serif;
+      font-weight: 600;
+      padding: 12px 22px;
+      border-radius: 8px;
+    }
+    a.btn:hover { background: var(--ez-primary-light); }
+    a.btn.secondary {
+      background: transparent;
+      color: var(--ez-primary);
+      border: 2px solid var(--ez-primary);
+      padding: 10px 20px;
+    }
+    .meta { color: var(--ez-muted); font-size: 13px; margin-top: 10px; }
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--ez-section);
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+    .field span { flex: 0 0 88px; font-size: 13px; color: var(--ez-muted); }
+    .field code {
+      flex: 1;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+      color: var(--ez-dark);
+      word-break: break-all;
+    }
+    button.copy {
+      border: 0;
+      background: var(--ez-primary);
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    ol { margin: 8px 0 0; padding-left: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--ez-line); vertical-align: middle; }
+    th { font-size: 12px; color: var(--ez-muted); font-weight: 600; }
+    td a { color: var(--ez-primary-light); font-weight: 600; }
+    footer { color: var(--ez-muted); font-size: 13px; }
+    footer a { color: var(--ez-primary-light); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">ezCloud</div>
+      <h1>Remote</h1>
+      <p>Tải ứng dụng để nhân viên hỗ trợ kết nối vào máy của bạn. Trang tự chọn bản cài đúng hệ điều hành và loại máy.</p>
+    </div>
+  </header>
+  <main>
+    <div class="wrap">
+      <section class="card" id="match">
+        <div class="badge">Phù hợp với máy này</div>
+        <h2 id="match-title">Đang nhận diện máy…</h2>
+        <p id="match-note"></p>
+        <div class="actions" id="match-actions"></div>
+        <div class="meta" id="match-meta"></div>
+      </section>
+
+      <section class="card">
+        <h2>Sau khi cài</h2>
+        <p>Bản Windows đã gắn sẵn ID server và Key. Cài đúng file vừa tải và không đổi tên file trước khi chạy — ứng dụng đọc cấu hình từ tên file. Bản macOS và Linux trên trang này vẫn cần điền hai ô dưới, trong <strong>Cài đặt → Mạng</strong>. Ô Relay để trống.</p>
+        <div class="field">
+          <span>ID server</span>
+          <code id="server">remote.ezcloud.vn</code>
+          <button class="copy" type="button" data-copy="server">Sao chép</button>
+        </div>
+        <div class="field">
+          <span>Key</span>
+          <code id="key">k46cdDTEQtwOyM3F9pk1FBl+rmS2ewBTCgsN1bM0HJY=</code>
+          <button class="copy" type="button" data-copy="key">Sao chép</button>
+        </div>
+        <ol>
+          <li>Tải và cài bản đúng với máy. Với Windows, giữ nguyên tên file.</li>
+          <li>Trên macOS và Linux, điền ID server và Key ở trên.</li>
+          <li>Gửi ID hiện trên màn hình chính cho nhân viên hỗ trợ.</li>
+        </ol>
+      </section>
+
+      <section class="card">
+        <h2>Bản cho máy khác</h2>
+        <table>
+          <thead>
+            <tr><th>Máy</th><th>Tệp</th><th></th></tr>
+          </thead>
+          <tbody id="all"></tbody>
+        </table>
+      </section>
+
+      <footer id="footer">
+        ezCloud Remote là dịch vụ kết nối của ezCloud.
+      </footer>
+    </div>
+  </main>
+  <script>
+    let BUILDS = [];
+
+    function href(file) {
+      return "/dl/" + encodeURIComponent(file);
+    }
+
+    function sizeOf(build) {
+      const n = build.bytes;
+      if (!n) return "";
+      return (n / (1024 * 1024)).toFixed(0) + " MB";
+    }
+
+    function button(build, secondary) {
+      const a = document.createElement("a");
+      a.className = secondary ? "btn secondary" : "btn";
+      a.href = href(build.file);
+      const size = sizeOf(build);
+      a.textContent = "Tải " + build.label + (size ? " (" + size + ")" : "");
+      return a;
+    }
+
+    function candidates(info) {
+      if (info.os === "other") return [];
+      return BUILDS.filter(function (b) {
+        if (b.os !== info.os) return false;
+        if (info.arch && b.arch !== info.arch) return false;
+        return true;
+      });
+    }
+
+    function renderMatch(info) {
+      const title = document.getElementById("match-title");
+      const note = document.getElementById("match-note");
+      const actions = document.getElementById("match-actions");
+      const meta = document.getElementById("match-meta");
+      actions.replaceChildren();
+      const list = candidates(info);
+      if (!list.length) {
+        title.textContent = "Chưa có bản cho máy này";
+        note.textContent = "Trang này dành cho Windows, macOS và Linux trên máy tính. Hãy chọn bản trong bảng bên dưới nếu bạn đang tải hộ máy khác.";
+        return;
+      }
+      if (list.length === 1) {
+        title.textContent = list[0].label;
+        note.textContent = list[0].hint || "";
+        actions.appendChild(button(list[0], false));
+      } else if (info.os === "macos" && !info.arch) {
+        title.textContent = "macOS";
+        note.textContent = "Trình duyệt không cho biết máy dùng chip Apple Silicon hay Intel. Chọn đúng một bản.";
+        list.forEach(function (b) { actions.appendChild(button(b, false)); });
+      } else if (info.os === "linux") {
+        title.textContent = info.arch === "arm64" ? "Linux ARM" : "Linux 64-bit";
+        note.textContent = "Ubuntu và Debian dùng tệp .deb. Fedora, RHEL và Rocky dùng tệp .rpm.";
+        list.forEach(function (b, i) { actions.appendChild(button(b, i > 0)); });
+      } else {
+        title.textContent = "Chọn bản đúng với máy";
+        note.textContent = "";
+        list.forEach(function (b) { actions.appendChild(button(b, false)); });
+      }
+      meta.textContent = (window.__release.product || "") + " " + (window.__release.version || "");
+    }
+
+    function renderAll() {
+      const body = document.getElementById("all");
+      body.replaceChildren();
+      BUILDS.forEach(function (b) {
+        const tr = document.createElement("tr");
+        const name = document.createElement("td");
+        name.textContent = b.label;
+        const file = document.createElement("td");
+        const size = sizeOf(b);
+        file.textContent = b.file + (size ? " · " + size : "");
+        const linkCell = document.createElement("td");
+        const link = document.createElement("a");
+        link.href = href(b.file);
+        link.textContent = "Tải";
+        linkCell.appendChild(link);
+        tr.append(name, file, linkCell);
+        body.appendChild(tr);
+      });
+    }
+
+    function applyRelease(manifest) {
+      window.__release = manifest || {};
+      BUILDS = manifest.builds || [];
+      if (manifest.server) document.getElementById("server").textContent = manifest.server;
+      if (manifest.key) document.getElementById("key").textContent = manifest.key;
+      const footer = document.getElementById("footer");
+      footer.replaceChildren();
+      const product = manifest.product || "Ứng dụng";
+      footer.appendChild(document.createTextNode(product + " " + (manifest.version || "") + ". "));
+      if (manifest.source) {
+        const a = document.createElement("a");
+        a.href = manifest.source;
+        a.textContent = "Mã nguồn";
+        footer.appendChild(a);
+        footer.appendChild(document.createTextNode(". "));
+      }
+      footer.appendChild(document.createTextNode("ezCloud Remote là dịch vụ kết nối của ezCloud, không phải sản phẩm chính thức của RustDesk."));
+    }
+
+    async function detect() {
+      let os = "";
+      let arch = "";
+      const ua = navigator.userAgent || "";
+      if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
+        try {
+          const v = await navigator.userAgentData.getHighEntropyValues(["architecture", "bitness", "platform"]);
+          const platform = String(v.platform || "").toLowerCase();
+          if (platform.indexOf("win") === 0) os = "windows";
+          else if (platform.indexOf("mac") === 0) os = "macos";
+          else if (platform.indexOf("linux") === 0) os = "linux";
+          else if (platform.indexOf("android") === 0) os = "other";
+          const cpu = String(v.architecture || "").toLowerCase();
+          if (cpu.indexOf("arm") >= 0) arch = "arm64";
+          else if (v.bitness === "32") arch = "x86";
+          else if (cpu) arch = "x64";
+        } catch (e) {}
+      }
+      if (!os) {
+        if (/Android|iPhone|iPad|iPod/i.test(ua)) os = "other";
+        else if (/Windows/i.test(ua)) os = "windows";
+        else if (/Mac OS X|Macintosh/i.test(ua)) os = "macos";
+        else if (/Linux/i.test(ua)) os = "linux";
+        else os = "other";
+      }
+      if (!arch && os === "windows") {
+        if (/ARM64|aarch64/i.test(ua)) arch = "arm64";
+        else if (/Win64|WOW64|x64/i.test(ua)) arch = "x64";
+        else arch = "x86";
+      }
+      if (!arch && os === "linux") {
+        arch = /aarch64|arm64/i.test(ua) ? "arm64" : "x64";
+      }
+      return { os: os, arch: arch };
+    }
+
+    document.querySelectorAll("button.copy").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const id = btn.getAttribute("data-copy");
+        const text = document.getElementById(id).textContent;
+        navigator.clipboard.writeText(text).then(function () {
+          const old = btn.textContent;
+          btn.textContent = "Đã chép";
+          setTimeout(function () { btn.textContent = old; }, 1200);
+        });
+      });
+    });
+
+    fetch("/manifest.json", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("manifest"); return r.json(); })
+      .then(function (manifest) {
+        applyRelease(manifest);
+        return detect();
+      })
+      .then(function (info) {
+        renderMatch(info);
+        renderAll();
+      })
+      .catch(function () {
+        document.getElementById("match-title").textContent = "Chưa có bản cài";
+        document.getElementById("match-note").textContent = "Chưa có bản build nào được đăng lên.";
+      });
+  </script>
+</body>
+</html>

@@ -42,10 +42,14 @@ type Message = RendezvousMessage;
 fn connection_meta(
     control_permissions: Option<ControlPermissions>,
     controlled_context: Option<ControlledContext>,
+    ez_agent_name: String,
+    ez_ticket_id: String,
 ) -> ConnectionMeta {
     ConnectionMeta {
         control_permissions,
         controlled_context,
+        ez_agent_name,
+        ez_ticket_id,
     }
 }
 
@@ -506,6 +510,10 @@ impl RendezvousMediator {
         match msg {
             Some(rendezvous_message::Union::RegisterPeerResponse(rpr)) => {
                 update_latency();
+                if rpr.auth_required {
+                    log::info!("ezID presence rejected while registering peer");
+                    crate::ezcloud::session::clear_local("Máy chủ từ chối phiên đăng nhập.");
+                }
                 if rpr.request_pk {
                     log::info!("request_pk received from {}", self.host);
                     self.register_pk(sink).await?;
@@ -524,6 +532,10 @@ impl RendezvousMediator {
                     }
                     Ok(register_pk_response::Result::UUID_MISMATCH) => {
                         self.handle_uuid_mismatch(sink).await?;
+                    }
+                    Ok(register_pk_response::Result::AUTH_REQUIRED) => {
+                        log::info!("ezID presence rejected while registering pk");
+                        crate::ezcloud::session::clear_local("Máy chủ từ chối phiên đăng nhập.");
                     }
                     Ok(register_pk_response::Result::NOT_DEPLOYED) => {
                         if !NEEDS_DEPLOY.load(Ordering::SeqCst) {
@@ -680,6 +692,8 @@ impl RendezvousMediator {
         let meta = connection_meta(
             rr.control_permissions.into_option(),
             rr.controlled_context.into_option(),
+            rr.agent_name,
+            rr.ticket_id,
         );
 
         self.create_relay(
@@ -776,6 +790,8 @@ impl RendezvousMediator {
         let meta = connection_meta(
             fla.control_permissions.clone().into_option(),
             fla.controlled_context.clone().into_option(),
+            fla.agent_name.clone(),
+            fla.ticket_id.clone(),
         );
         if peer_addr_v6.port() > 0 && !relay {
             socket_addr_v6 = start_ipv6(
@@ -1065,6 +1081,8 @@ impl RendezvousMediator {
         let meta = connection_meta(
             ph.control_permissions.clone().into_option(),
             ph.controlled_context.clone().into_option(),
+            ph.agent_name.clone(),
+            ph.ticket_id.clone(),
         );
         // The controller's force_relay alone does not say whether ICE must be Relay-only; its
         // offer envelope does. `ice_policy: "all"` means the relay was forced by the transport
@@ -1253,6 +1271,9 @@ impl RendezvousMediator {
     }
 
     async fn register_pk(&mut self, socket: Sink<'_>) -> ResultType<()> {
+        if ezcloud_auth_blocks_register() {
+            return Ok(());
+        }
         // Throttle register_pk when the device is awaiting deployment: server
         // already told us we're not in its db; sending more often than every
         // DEPLOY_RETRY_INTERVAL ms is wasted traffic until the operator runs
@@ -1277,6 +1298,7 @@ impl RendezvousMediator {
             uuid: uuid.into(),
             pk: pk.into(),
             no_register_device: Config::no_register_device(),
+            session_token: ezcloud_presence_token(),
             ..Default::default()
         });
         socket.send(&msg_out).await?;
@@ -1305,6 +1327,9 @@ impl RendezvousMediator {
             return Ok(());
         }
         drop(solving);
+        if ezcloud_auth_blocks_register() {
+            return Ok(());
+        }
         if !Config::get_key_confirmed() || !Config::get_host_key_confirmed(&self.host_prefix) {
             log::info!(
                 "register_pk of {} due to key not confirmed",
@@ -1339,6 +1364,19 @@ impl RendezvousMediator {
         }
         relay_server
     }
+}
+
+fn ezcloud_presence_token() -> String {
+    let token = crate::ezcloud::session::presence_token();
+    if !token.is_empty() {
+        return token;
+    }
+    hbb_common::config::LocalConfig::get_option_from_file("ezcloud-presence-token")
+}
+
+fn ezcloud_auth_blocks_register() -> bool {
+    hbb_common::config::LocalConfig::get_option_from_file("ezcloud-auth-required") == "Y"
+        && ezcloud_presence_token().is_empty()
 }
 
 fn get_direct_port() -> i32 {
@@ -1795,7 +1833,7 @@ mod tests {
                 host,
                 crate::server::new_for_test(),
                 msg_punch,
-                connection_meta(None, None),
+                connection_meta(None, None, String::new(), String::new()),
                 None,
             )
             .await

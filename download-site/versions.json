@@ -1,0 +1,14 @@
+{
+  "version": "1.5.1",
+  "bytes": {
+    "rustdesk-1.5.1-0.aarch64.rpm": 33529853,
+    "rustdesk-1.5.1-0.x86_64.rpm": 34346724,
+    "rustdesk-1.5.1-aarch64.deb": 23594612,
+    "rustdesk-1.5.1-aarch64.dmg": 30548457,
+    "rustdesk-1.5.1-aarch64.exe": 24252784,
+    "rustdesk-1.5.1-x86-sciter.exe": 13645680,
+    "rustdesk-1.5.1-x86_64.deb": 25337156,
+    "rustdesk-1.5.1-x86_64.dmg": 37691902,
+    "rustdesk-1.5.1-x86_64.exe": 26211184
+  }
+}
