@@ -25,9 +25,9 @@ on:
 
 env:
   SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  # Cargo.lock pulls time-macros 0.2.32, which needs Cargo edition 2024 (Rust 1.85).
-  RUST_VERSION: "1.85.0"
-  MAC_RUST_VERSION: "1.85.0"
+  # Cargo.lock requires Rust 1.88 or newer (time 0.3.55). 1.99.1 matches the local build.
+  RUST_VERSION: "1.99.1"
+  MAC_RUST_VERSION: "1.99.1"
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.15.05-1"
@@ -2066,9 +2066,9 @@ jobs:
                libssl-dev
             # we have libopus compiled by us.
             apt-get remove -y libopus-dev || true
-            # output devs
-            ls -l ./
-            tree -L 3 /opt/artifacts/vcpkg/installed
+            # The volume is not mounted while this image is built.
+            ls -l ./ || true
+            tree -L 3 /opt/artifacts/vcpkg/installed || true
           run: |
             # disable git safe.directory
             git config --global --add safe.directory "*"
