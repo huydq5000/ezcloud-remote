@@ -1,8 +1,7 @@
 import { buildApp } from './app.ts'
 import { ezidVerifier } from './ezid.ts'
 
-const issuer = process.env.EZID_ISSUER ?? 'https://dev-id.ezcloud.vn'
-const audience = process.env.EZID_AUDIENCE ?? ''
+const issuer = process.env.EZID_ISSUER ?? 'https://id.ezcloud.vn'
 const supporterRoles = (process.env.EZID_SUPPORTER_ROLES ?? '')
   .split(',')
   .map((item) => item.trim())
@@ -18,7 +17,7 @@ const app = await buildApp({
   jwtSecret: secret,
   jwtIss: process.env.EZCLOUD_JWT_ISS ?? 'ezcloud-support',
   supporterRoles,
-  verifyEzid: ezidVerifier(issuer, audience, supporterRoles),
+  verifyEzid: ezidVerifier(issuer),
   acl: {
     mode: (process.env.ACL_MODE as 'off' | 'shadow' | 'enforce') || 'off',
     baseUrl: process.env.ACL_BASE_URL ?? '',

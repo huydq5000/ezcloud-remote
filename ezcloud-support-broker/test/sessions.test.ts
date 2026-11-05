@@ -33,6 +33,8 @@ test('issues a presence token for a valid ezID user', async () => {
   assert.equal(response.statusCode, 200)
   const body = response.json()
   assert.equal(body.role, 'supporter')
+  assert.equal(body.name, 'User One')
+  assert.equal(body.email, 'user@ezcloud.vn')
   const claims = await verifyPresence('test-secret', 'ezcloud-support', body.presence_token)
   assert.equal(claims.sub, 'user-1')
   assert.equal(claims.device_uuid, 'device-uuid')

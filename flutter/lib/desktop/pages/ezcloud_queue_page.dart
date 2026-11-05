@@ -73,12 +73,12 @@ class _EzcloudSupportPageState extends State<EzcloudSupportPage> {
             : _status == 'closed'
                 ? 'Đã đóng'
                 : 'Chưa có yêu cầu';
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             Text(label, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 16),
             if (_error.isNotEmpty)
@@ -97,8 +97,7 @@ class _EzcloudSupportPageState extends State<EzcloudSupportPage> {
                 onPressed: _busy ? null : _close,
                 child: const Text('Kết thúc'),
               ),
-          ],
-        ),
+        ],
       ),
     );
   }

@@ -1,6 +1,6 @@
 {
   "version": "1.5.1",
-  "product": "RustDesk",
+  "product": "ezRemote",
   "server": "remote.ezcloud.vn",
   "key": "k46cdDTEQtwOyM3F9pk1FBl+rmS2ewBTCgsN1bM0HJY=",
   "source": "https://github.com/rustdesk/rustdesk/tree/1.5.1",
@@ -30,8 +30,10 @@
       "os": "macos",
       "arch": "arm64",
       "label": "macOS Apple Silicon",
-      "hint": "Mac chip M1 trở lên",
-      "file": "rustdesk-1.5.1-aarch64.dmg"
+      "hint": "App tên ezRemote, có đăng nhập ezID. ID server đã gắn sẵn",
+      "file": "ezcloud-remote-1.5.1-aarch64.dmg",
+      "bytes": 36141333,
+      "sha256": "35581a0050518f755243630cff3e278c20e37f798494f17b6a972efbf40a6557"
     },
     {
       "os": "macos",

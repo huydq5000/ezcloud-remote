@@ -1255,20 +1255,28 @@ pub fn get_custom_rendezvous_server(custom: String) -> String {
 const EZCLOUD_ID_SERVER: &str = "remote.ezcloud.vn";
 const EZCLOUD_SERVER_KEY: &str = "k46cdDTEQtwOyM3F9pk1FBl+rmS2ewBTCgsN1bM0HJY=";
 
-/// Server and key for every ezCloud Remote build. Override wins over a saved
+fn ezcloud_env(key: &str, fallback: &str) -> String {
+    crate::ezcloud::env::get(key).unwrap_or_else(|| fallback.to_owned())
+}
+
+/// Server and key from this build's ezcloud.env. Override wins over a saved
 /// public-network setting, and an empty api-server stops calls to port 21114.
 pub fn apply_ezcloud_builtin_config() {
-    *config::APP_NAME.write().unwrap() = "ezCloud Remote".to_owned();
+    let id_server = ezcloud_env("EZCLOUD_ID_SERVER", EZCLOUD_ID_SERVER);
+    let server_key = ezcloud_env("EZCLOUD_SERVER_KEY", EZCLOUD_SERVER_KEY);
+    *config::APP_NAME.write().unwrap() = "ezRemote".to_owned();
     {
         let mut overwrite = config::OVERWRITE_SETTINGS.write().unwrap();
-        overwrite.insert(
-            "custom-rendezvous-server".to_owned(),
-            EZCLOUD_ID_SERVER.to_owned(),
-        );
-        overwrite.insert("key".to_owned(), EZCLOUD_SERVER_KEY.to_owned());
+        overwrite.insert("custom-rendezvous-server".to_owned(), id_server.clone());
+        overwrite.insert("key".to_owned(), server_key);
         overwrite.insert("api-server".to_owned(), String::new());
     }
-    *config::PROD_RENDEZVOUS_SERVER.write().unwrap() = EZCLOUD_ID_SERVER.to_owned();
+    *config::PROD_RENDEZVOUS_SERVER.write().unwrap() = id_server;
+    {
+        let mut builtin = config::BUILTIN_SETTINGS.write().unwrap();
+        builtin.insert(keys::OPTION_HIDE_NETWORK_SETTINGS.to_owned(), "Y".to_owned());
+        builtin.insert(keys::OPTION_HIDE_SERVER_SETTINGS.to_owned(), "Y".to_owned());
+    }
     LocalConfig::set_option("ezcloud-auth-required".to_owned(), "Y".to_owned());
     if let Ok(url) = std::env::var("EZCLOUD_SOURCE_URL") {
         let url = url.trim();
@@ -1276,6 +1284,8 @@ pub fn apply_ezcloud_builtin_config() {
             LocalConfig::set_option("ezcloud-source-url".to_owned(), url.to_owned());
         }
     }
+    crate::ezcloud::session::publish_runtime_config();
+    crate::ezcloud::session::abandon_interrupted_login();
     crate::ezcloud::session::restore_in_background();
 }
 

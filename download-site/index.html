@@ -147,20 +147,10 @@
 
       <section class="card">
         <h2>Sau khi cài</h2>
-        <p>Bản Windows đã gắn sẵn ID server và Key. Cài đúng file vừa tải và không đổi tên file trước khi chạy — ứng dụng đọc cấu hình từ tên file. Bản macOS và Linux trên trang này vẫn cần điền hai ô dưới, trong <strong>Cài đặt → Mạng</strong>. Ô Relay để trống.</p>
-        <div class="field">
-          <span>ID server</span>
-          <code id="server">remote.ezcloud.vn</code>
-          <button class="copy" type="button" data-copy="server">Sao chép</button>
-        </div>
-        <div class="field">
-          <span>Key</span>
-          <code id="key">k46cdDTEQtwOyM3F9pk1FBl+rmS2ewBTCgsN1bM0HJY=</code>
-          <button class="copy" type="button" data-copy="key">Sao chép</button>
-        </div>
+        <p>Mở ezRemote và đăng nhập ezID. Máy chủ và tài khoản đã gắn trong bản cài.</p>
         <ol>
-          <li>Tải và cài bản đúng với máy. Với Windows, giữ nguyên tên file.</li>
-          <li>Trên macOS và Linux, điền ID server và Key ở trên.</li>
+          <li>Tải và cài bản đúng với máy.</li>
+          <li>Mở app và đăng nhập ezID.</li>
           <li>Gửi ID hiện trên màn hình chính cho nhân viên hỗ trợ.</li>
         </ol>
       </section>
@@ -182,6 +172,13 @@
   </main>
   <script>
     let BUILDS = [];
+
+    function releaseLabel(manifest) {
+      const version = manifest.version || "";
+      const build = manifest.build || "";
+      if (version && build) return version + " · " + build;
+      return version || build;
+    }
 
     function href(file) {
       return "/dl/" + encodeURIComponent(file);
@@ -240,7 +237,7 @@
         note.textContent = "";
         list.forEach(function (b) { actions.appendChild(button(b, false)); });
       }
-      meta.textContent = (window.__release.product || "") + " " + (window.__release.version || "");
+      meta.textContent = (window.__release.product || "") + " " + releaseLabel(window.__release);
     }
 
     function renderAll() {
@@ -266,12 +263,14 @@
     function applyRelease(manifest) {
       window.__release = manifest || {};
       BUILDS = manifest.builds || [];
-      if (manifest.server) document.getElementById("server").textContent = manifest.server;
-      if (manifest.key) document.getElementById("key").textContent = manifest.key;
+      const server = document.getElementById("server");
+      const key = document.getElementById("key");
+      if (server && manifest.server) server.textContent = manifest.server;
+      if (key && manifest.key) key.textContent = manifest.key;
       const footer = document.getElementById("footer");
       footer.replaceChildren();
       const product = manifest.product || "Ứng dụng";
-      footer.appendChild(document.createTextNode(product + " " + (manifest.version || "") + ". "));
+      footer.appendChild(document.createTextNode(product + " " + releaseLabel(manifest) + ". "));
       if (manifest.source) {
         const a = document.createElement("a");
         a.href = manifest.source;
@@ -330,7 +329,7 @@
       });
     });
 
-    fetch("/manifest.json", { cache: "no-store" })
+    fetch("/manifest.json?v=" + Date.now(), { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("manifest"); return r.json(); })
       .then(function (manifest) {
         applyRelease(manifest);

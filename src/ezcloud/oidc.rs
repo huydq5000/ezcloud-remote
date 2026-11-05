@@ -1,6 +1,4 @@
 use std::{
-    io::{Read, Write},
-    net::{Ipv4Addr, TcpListener},
     sync::atomic::{AtomicBool, Ordering},
     thread,
     time::{Duration, Instant},
@@ -26,7 +24,7 @@ pub struct Discovery {
     pub authorization_endpoint: String,
     pub token_endpoint: String,
     pub jwks_uri: String,
-    pub end_session_endpoint: String,
+    pub revocation_endpoint: String,
 }
 
 pub struct TokenSet {
@@ -72,19 +70,17 @@ pub fn authorize_url(
     Ok(url.to_string())
 }
 
-pub fn end_session_url(
-    discovery: &Discovery,
-    id_token: &str,
-    post_logout_redirect_uri: &str,
-) -> Option<String> {
-    if discovery.end_session_endpoint.is_empty() || id_token.is_empty() {
-        return None;
+pub fn revoke_refresh(discovery: &Discovery, client_id: &str, refresh_token: &str) {
+    if discovery.revocation_endpoint.is_empty() || refresh_token.is_empty() || client_id.is_empty()
+    {
+        return;
     }
-    let mut url = url::Url::parse(&discovery.end_session_endpoint).ok()?;
-    url.query_pairs_mut()
-        .append_pair("id_token_hint", id_token)
-        .append_pair("post_logout_redirect_uri", post_logout_redirect_uri);
-    Some(url.to_string())
+    let body = form(&[
+        ("token", refresh_token),
+        ("token_type_hint", "refresh_token"),
+        ("client_id", client_id),
+    ]);
+    let _ = http_post_form(&discovery.revocation_endpoint, &body);
 }
 
 pub fn fetch_discovery(issuer: &str) -> Result<Discovery> {
@@ -98,8 +94,8 @@ pub fn fetch_discovery(issuer: &str) -> Result<Discovery> {
         authorization_endpoint: required_str(&value, "authorization_endpoint")?,
         token_endpoint: required_str(&value, "token_endpoint")?,
         jwks_uri: required_str(&value, "jwks_uri")?,
-        end_session_endpoint: value
-            .get("end_session_endpoint")
+        revocation_endpoint: value
+            .get("revocation_endpoint")
             .and_then(|item| item.as_str())
             .unwrap_or("")
             .to_owned(),
@@ -191,10 +187,18 @@ pub fn verify_id_token(
     })
 }
 
-pub fn wait_for_auth_code(port: u16, expected_state: &str, cancel: &AtomicBool) -> Result<String> {
-    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, port))
-        .map_err(|err| anyhow!("Không mở được cổng loopback {port}: {err}"))?;
-    listener.set_nonblocking(true)?;
+pub fn auth_result_url(redirect_uri: &str, state: &str) -> Result<String> {
+    let mut url = url::Url::parse(redirect_uri)?;
+    url.set_path("/auth/result");
+    url.set_query(None);
+    url.query_pairs_mut().append_pair("state", state);
+    Ok(url.into())
+}
+
+pub fn poll_for_auth_code(result_url: &str, cancel: &AtomicBool) -> Result<String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()?;
     let deadline = Instant::now() + Duration::from_secs(180);
     loop {
         if cancel.load(Ordering::SeqCst) {
@@ -203,35 +207,21 @@ pub fn wait_for_auth_code(port: u16, expected_state: &str, cancel: &AtomicBool) 
         if Instant::now() > deadline {
             bail!("Hết thời gian chờ đăng nhập ezID");
         }
-        match listener.accept() {
-            Ok((mut stream, _)) => {
-                stream.set_nonblocking(false).ok();
-                stream
-                    .set_read_timeout(Some(Duration::from_secs(5)))
-                    .ok();
-                let mut buf = [0u8; 8192];
-                let n = stream.read(&mut buf).unwrap_or(0);
-                let text = String::from_utf8_lossy(&buf[..n]);
-                let target = text
-                    .lines()
-                    .next()
-                    .and_then(|line| line.split_whitespace().nth(1))
-                    .unwrap_or("");
-                let body = "<!doctype html><meta charset=utf-8><p>Dang nhap ezID xong. Co the dong cua so nay.</p>";
-                let response = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}",
-                    body.len()
-                );
-                let _ = stream.write_all(response.as_bytes());
-                if target.starts_with("/callback") {
-                    return auth_code_from_target(target, expected_state);
+        if let Ok(response) = client.get(result_url).send() {
+            if response.status().as_u16() == 200 {
+                let body = response.text().unwrap_or_default();
+                let value: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+                if value.get("error").and_then(|item| item.as_str()).is_some() {
+                    bail!("ezID từ chối đăng nhập");
+                }
+                if let Some(code) = value.get("code").and_then(|item| item.as_str()) {
+                    if !code.is_empty() {
+                        return Ok(code.to_owned());
+                    }
                 }
             }
-            Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(50));
-            }
-            Err(err) => bail!(err),
         }
+        thread::sleep(Duration::from_millis(500));
     }
 }
 
@@ -376,12 +366,18 @@ mod tests {
     }
 
     #[test]
+    fn auth_result_stays_on_the_public_host() {
+        let url = auth_result_url("https://remote.ezcloud.vn/auth/callback", "abc").unwrap();
+        assert_eq!(url, "https://remote.ezcloud.vn/auth/result?state=abc");
+    }
+
+    #[test]
     fn authorize_url_omits_client_secret() {
         let discovery = Discovery {
             authorization_endpoint: "https://dev-id.ezcloud.vn/connect/authorize".to_owned(),
             token_endpoint: "https://dev-id.ezcloud.vn/connect/token".to_owned(),
             jwks_uri: "https://dev-id.ezcloud.vn/jwks".to_owned(),
-            end_session_endpoint: String::new(),
+            revocation_endpoint: String::new(),
         };
         let request = LoginRequest {
             state: "state".to_owned(),

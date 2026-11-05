@@ -58,6 +58,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   final GlobalKey _childKey = GlobalKey();
   bool _ezcloudSignedIn = false;
+  String _ezcloudName = '';
+  String _ezcloudEmail = '';
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +84,37 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
+  Widget _buildSignedInAccount(BuildContext context) {
+    final name = bind.mainGetLocalOption(key: 'ezcloud-display-name');
+    final email = bind.mainGetLocalOption(key: 'ezcloud-email');
+    final style = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        children: [
+          if (name.isNotEmpty)
+            Text(
+              name,
+              textAlign: TextAlign.center,
+              style: style.titleSmall,
+            ),
+          if (email.isNotEmpty)
+            Text(
+              email,
+              textAlign: TextAlign.center,
+              style: style.bodySmall,
+            ),
+          TextButton(
+            onPressed: () {
+              bind.mainSetLocalOption(key: 'ezcloud-login', value: 'logout');
+            },
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget buildLeftPane(BuildContext context) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
@@ -98,15 +131,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       ),
       buildTip(context),
       if (ezcloudAuthRequired() && ezcloudHasPresence())
-        Align(
-          alignment: Alignment.center,
-          child: TextButton(
-            onPressed: () {
-              bind.mainSetLocalOption(key: 'ezcloud-login', value: 'logout');
-            },
-            child: const Text('Đăng xuất ezID'),
-          ),
-        ),
+        _buildSignedInAccount(context),
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
       FutureBuilder<Widget>(
@@ -196,17 +221,19 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   buildRightPane(BuildContext context) {
-    if (ezcloudAuthRequired() && ezcloudHasPresence()) {
-      final supporter =
-          bind.mainGetLocalOption(key: 'ezcloud-role') == 'supporter';
-      return Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        child: supporter ? const EzcloudQueuePage() : const EzcloudSupportPage(),
-      );
-    }
+    final signedIn = ezcloudAuthRequired() && ezcloudHasPresence();
+    final supporter =
+        bind.mainGetLocalOption(key: 'ezcloud-role') == 'supporter';
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: ConnectionPage(),
+      child: Column(
+        children: [
+          if (signedIn && supporter)
+            const SizedBox(height: 220, child: EzcloudQueuePage()),
+          if (signedIn) const EzcloudSupportPage(),
+          const Expanded(child: ConnectionPage()),
+        ],
+      ),
     );
   }
 
@@ -727,8 +754,14 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _ezcloudSignedIn = ezcloudHasPresence();
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       final signedIn = ezcloudHasPresence();
-      if (signedIn != _ezcloudSignedIn) {
+      final name = bind.mainGetLocalOption(key: 'ezcloud-display-name');
+      final email = bind.mainGetLocalOption(key: 'ezcloud-email');
+      if (signedIn != _ezcloudSignedIn ||
+          name != _ezcloudName ||
+          email != _ezcloudEmail) {
         _ezcloudSignedIn = signedIn;
+        _ezcloudName = name;
+        _ezcloudEmail = email;
         if (mounted) setState(() {});
       }
       await gFFI.serverModel.fetchID();

@@ -3058,15 +3058,7 @@ impl Connection {
                 crate::get_builtin_option(keys::OPTION_ALLOW_LOGON_SCREEN_PASSWORD) == "Y"
                     && is_logon();
 
-            if let Some(matched) = self.ezcloud_click_only() {
-                if !matched {
-                    log::info!(
-                        "ezCloud ticket rejected conn={} ticket_present={}",
-                        self.inner.id(),
-                        !self.ez_ticket_id.is_empty()
-                    );
-                    return false;
-                }
+            if self.ezcloud_click_only() == Some(true) {
                 #[cfg(not(any(target_os = "android", target_os = "ios")))]
                 if should_use_terminal_os_login_scope(self.terminal, &lr.os_login.username) {
                     if let Some(keep_alive) = self.prepare_terminal_login_for_authorization().await

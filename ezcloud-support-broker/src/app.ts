@@ -191,7 +191,7 @@ export async function buildApp(deps: AppDeps) {
       device_uuid: body.device_uuid,
     })
     rememberDevice(db, body.device_id, body.device_uuid, user.sub, user.name, signed.exp)
-    return { presence_token: signed.token, expires_in: 600, role, name: user.name }
+    return { presence_token: signed.token, expires_in: 600, role, name: user.name, email: user.email }
   })
 
   app.post('/v1/sessions/refresh', async (request, reply) => {
@@ -209,7 +209,7 @@ export async function buildApp(deps: AppDeps) {
       device_uuid: body.device_uuid,
     })
     rememberDevice(db, body.device_id, body.device_uuid, user.sub, user.name, signed.exp)
-    return { presence_token: signed.token, expires_in: 600, role, name: user.name }
+    return { presence_token: signed.token, expires_in: 600, role, name: user.name, email: user.email }
   })
 
   app.delete('/v1/sessions/current', async (request, reply) => {
@@ -234,7 +234,6 @@ export async function buildApp(deps: AppDeps) {
     closeExpiredTickets(db)
     const user = await presence(request)
     if (!user) return reply.code(401).send({ error: 'unauthorized' })
-    if (user.role !== 'customer') return reply.code(403).send({ error: 'forbidden' })
     const body = request.body as { device_id?: string; device_uuid?: string }
     if (!body.device_id || body.device_uuid !== user.device_uuid) {
       return reply.code(403).send({ error: 'forbidden' })

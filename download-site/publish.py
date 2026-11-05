@@ -16,8 +16,12 @@ manifest.json fields:
               label, file, and optional hint, pkg
 
 `file` is the installer name inside that directory. The script fills in
-bytes and sha256, uploads the files to /dl/, and replaces /manifest.json.
-Files already on the host are left in place.
+bytes and sha256, then publishes each file under a new name that includes
+the build id (YYYYMMDDHHMMSS) so a cached copy of the previous name cannot
+be served as this release. It uploads those files to /dl/ and replaces
+/manifest.json. Files already on the host are left in place.
+
+    EZCLOUD_BUILD          optional digits, at least YYYYMMDD; default is now
 
     EZCLOUD_DOWNLOAD_HOST  default ezit@10.19.193.47
     EZCLOUD_DOWNLOAD_DIR   default /var/www/ezcloud-remote
@@ -27,9 +31,11 @@ import hashlib
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 HOST = os.environ.get("EZCLOUD_DOWNLOAD_HOST", "ezit@10.19.193.47")
@@ -48,6 +54,22 @@ def fail(message):
 def run(args):
     print("+ " + " ".join(shlex.quote(str(a)) for a in args))
     subprocess.run(args, check=True)
+
+
+def new_build_id():
+    override = os.environ.get("EZCLOUD_BUILD", "").strip()
+    if override:
+        if not override.isdigit() or len(override) < 8:
+            fail("EZCLOUD_BUILD must be digits, at least YYYYMMDD")
+        return override
+    return datetime.now().astimezone().strftime("%Y%m%d%H%M%S")
+
+
+def published_name(filename, build):
+    dot = filename.rfind(".")
+    if dot <= 0:
+        return f"{filename}.{build}"
+    return f"{filename[:dot]}.{build}{filename[dot:]}"
 
 
 def load_manifest(dist):
@@ -104,8 +126,17 @@ def publish(dist):
     if not dist.is_dir():
         fail(f"not a directory: {dist}")
     manifest = load_manifest(dist)
+    build_id = new_build_id()
+    manifest["build"] = build_id
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
+        staged = []
+        for build in manifest["builds"]:
+            source_name = build["file"]
+            build["file"] = published_name(source_name, build_id)
+            destination = tmp_path / build["file"]
+            shutil.copy2(dist / source_name, destination)
+            staged.append(str(destination))
         manifest_path = tmp_path / "manifest.json"
         sums_path = tmp_path / "SHA256SUMS"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
@@ -115,8 +146,7 @@ def publish(dist):
         sums_path.write_text("\n".join(lines) + "\n")
         remote_dl = f"{HOST}:{REMOTE_DIR}/dl/"
         run(SSH + [f"mkdir -p {shlex.quote(REMOTE_DIR)}/dl"])
-        files = [str(dist / build["file"]) for build in manifest["builds"]]
-        run(["scp", "-o", "BatchMode=yes", *files, remote_dl])
+        run(["scp", "-o", "BatchMode=yes", *staged, remote_dl])
         run(
             [
                 "scp",
@@ -128,7 +158,9 @@ def publish(dist):
                 f"{HOST}:{REMOTE_DIR}/",
             ]
         )
-    print(f"published {manifest['version']} ({len(manifest['builds'])} files)")
+    print(
+        f"published {manifest['version']} build {build_id} ({len(manifest['builds'])} files)"
+    )
 
 
 def init_host():

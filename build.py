@@ -740,6 +740,8 @@ def build_flutter_deb(version, features):
         ffi_bindgen_function_refactor()
     os.chdir('flutter')
     system2('flutter build linux --release')
+    if os.path.isfile('../ezcloud.env'):
+        system2(f'cp -f ../ezcloud.env {flutter_build_dir}ezcloud.env')
     system2('mkdir -p tmpdeb/usr/bin/')
     system2('mkdir -p tmpdeb/usr/share/rustdesk')
     system2('mkdir -p tmpdeb/usr/share/rustdesk/files/systemd/')
@@ -946,7 +948,12 @@ def build_flutter_dmg(version, features):
     mac_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x86_64'
     system2(
         f'FLUTTER_XCODE_ARCHS={mac_arch} FLUTTER_XCODE_ONLY_ACTIVE_ARCH=YES flutter build macos --release')
-    system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/')
+    app = './build/macos/Build/Products/Release/ezRemote.app'
+    if not os.path.isdir(app):
+        app = './build/macos/Build/Products/Release/RustDesk.app'
+    system2(f'cp -rf ../target/release/service {app}/Contents/MacOS/')
+    if os.path.isfile('../ezcloud.env'):
+        system2(f'mkdir -p {app}/Contents/Resources && cp -f ../ezcloud.env {app}/Contents/Resources/ezcloud.env')
     '''
     system2(
         "create-dmg --volname \"RustDesk Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon RustDesk.app 200 190 --hide-extension RustDesk.app rustdesk.dmg ./build/macos/Build/Products/Release/RustDesk.app")
@@ -961,6 +968,8 @@ def build_flutter_arch_manjaro(version, features):
     ffi_bindgen_function_refactor()
     os.chdir('flutter')
     system2('flutter build linux --release')
+    if os.path.isfile('../ezcloud.env'):
+        system2(f'cp -f ../ezcloud.env {flutter_build_dir}ezcloud.env')
     system2(f'strip {flutter_build_dir}/lib/librustdesk.so')
     os.chdir('../res')
     system2('HBB=`pwd`/.. FLUTTER=1 makepkg -f')
@@ -977,6 +986,8 @@ def build_flutter_windows(version, features, skip_portable_pack):
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
+    if os.path.isfile('ezcloud.env'):
+        shutil.copy2('ezcloud.env', os.path.join(flutter_build_dir_2, 'ezcloud.env'))
     if skip_portable_pack:
         return
     os.chdir('libs/portable')

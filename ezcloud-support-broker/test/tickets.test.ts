@@ -15,7 +15,7 @@ async function login(app: Awaited<ReturnType<typeof testApp>>, extra: Record<str
   return response.json().presence_token as string
 }
 
-test('a device has one open ticket and a supporter cannot create one', async () => {
+test('a device has one open ticket and a supporter can request support for their own device', async () => {
   const app = await testApp()
   const customer = await login(app, { sub: 'cust', email: 'c@ezcloud.vn', name: 'Cust' }, 'uuid-c', '11')
   const first = await app.inject({
@@ -32,13 +32,15 @@ test('a device has one open ticket and a supporter cannot create one', async () 
   })
   assert.equal(first.json().ticket_id, second.json().ticket_id)
   const supporter = await login(app, { sub: 'sup', email: 's@ezcloud.vn', roles: ['support-staff'] }, 'uuid-s', '12')
-  const denied = await app.inject({
+  const own = await app.inject({
     method: 'POST',
     url: '/v1/tickets',
     headers: { authorization: `Bearer ${supporter}` },
     payload: { device_id: '12', device_uuid: 'uuid-s' },
   })
-  assert.equal(denied.statusCode, 403)
+  assert.equal(own.statusCode, 200)
+  assert.ok(own.json().ticket_id)
+  assert.notEqual(own.json().ticket_id, first.json().ticket_id)
   await app.close()
 })
 
