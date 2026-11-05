@@ -1,4 +1,5 @@
 name: Desktop release
+# Builds the Windows, macOS, and Linux desktop installers.
 
 on:
   workflow_dispatch:
