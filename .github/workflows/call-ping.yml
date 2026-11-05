@@ -1,8 +1,0 @@
-name: Call ping
-
-on:
-  workflow_dispatch:
-
-jobs:
-  call:
-    uses: ./.github/workflows/ping-reusable.yml

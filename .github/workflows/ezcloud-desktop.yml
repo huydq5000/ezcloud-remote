@@ -4,6 +4,10 @@ name: Desktop release
 on:
   workflow_dispatch:
 
+permissions:
+  actions: write
+  contents: write
+
 jobs:
   desktop:
     uses: ./.github/workflows/flutter-build.yml
