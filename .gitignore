@@ -61,3 +61,6 @@ flutter/web/
 /third_party/libdrmtap/
 # Local git worktrees
 .worktrees/
+
+# Nested server checkout. It is a separate repository.
+rustdesk-server/
